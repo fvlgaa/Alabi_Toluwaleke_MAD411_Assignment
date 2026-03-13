@@ -15,7 +15,11 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.alabi_toluwaleke_mad411_assignmentss.ui.theme.Alabi_Toluwaleke_MAD411_AssignmentssTheme
+import kotlinx.coroutines.launch
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,66 +45,75 @@ data class Habit(
 )
 
 @Composable
-fun HabitTrackerApp() {
-    // state variables
-    val habitList = remember { mutableStateListOf<Habit>() }
+fun HabitTrackerApp(viewModel: HabitViewModel = viewModel()) {
+    // grab the habit list from the viewmodel
+    val habitList by viewModel.habits.collectAsStateWithLifecycle()
     var inputText by remember { mutableStateOf("") }
-    var nextId by remember { mutableStateOf(0) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp)
-    ) {
-        // header section
-        Text(
-            text = "Student Habit Tracker",
-            fontSize = 28.sp,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+    // needed for the snackbar
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
-        Divider(
-            thickness = 2.dp,
-            modifier = Modifier.padding(bottom = 20.dp)
-        )
-
-        // input section
-        HabitInputSection(
-            text = inputText,
-            onTextChange = { inputText = it },
-            onAddClick = {
-                if (inputText.isNotBlank()) {
-                    habitList.add(Habit(id = nextId, name = inputText))
-                    nextId++
-                    inputText = ""
-                }
-            }
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // list section
-        if (habitList.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "No habits yet. Add one above!",
-                    color = Color.Gray
-                )
-            }
-        } else {
-            HabitListSection(
-                habits = habitList,
-                onCompleteClick = { habitId ->
-                    val index = habitList.indexOfFirst { it.id == habitId }
-                    if (index != -1) {
-                        val currentHabit = habitList[index]
-                        habitList[index] = currentHabit.copy(isCompleted = !currentHabit.isCompleted)
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        // fab replaces the old add button
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    if (inputText.isNotBlank()) {
+                        viewModel.addHabit(inputText)
+                        inputText = ""
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Habit added!")
+                        }
                     }
                 }
+            ) {
+                Text("+")
+            }
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(24.dp)
+        ) {
+            // header section
+            Text(
+                text = "Student Habit Tracker",
+                fontSize = 28.sp,
+                modifier = Modifier.padding(bottom = 16.dp)
             )
+
+            Divider(
+                thickness = 2.dp,
+                modifier = Modifier.padding(bottom = 20.dp)
+            )
+
+            // input section
+            HabitInputSection(
+                text = inputText,
+                onTextChange = { inputText = it }
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // list section
+            if (habitList.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "No habits yet. Add one above!", color = Color.Gray)
+                }
+            } else {
+                HabitListSection(
+                    habits = habitList,
+                    onCompleteClick = { viewModel.toggleComplete(it) },
+                    onDeleteClick = { viewModel.deleteHabit(it) }
+                )
+            }
         }
     }
 }
@@ -108,44 +121,39 @@ fun HabitTrackerApp() {
 @Composable
 fun HabitInputSection(
     text: String,
-    onTextChange: (String) -> Unit,
-    onAddClick: () -> Unit
+    onTextChange: (String) -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = onTextChange,
-            label = { Text("Enter a new habit") },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("e.g., Drink water") }
-        )
+    // if its blank its an error simple as that
+    val isError = text.isBlank()
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Button(
-            onClick = onAddClick,
-            modifier = Modifier.align(Alignment.End),
-            enabled = text.isNotBlank()
-        ) {
-            Text("Add Habit")
+    OutlinedTextField(
+        value = text,
+        onValueChange = onTextChange,
+        label = { Text("Enter a new habit") },
+        placeholder = { Text("e.g., Drink water") },
+        isError = isError,
+        modifier = Modifier.fillMaxWidth(),
+        supportingText = {
+            if (isError) Text("Habit name cannot be empty", color = Color.Red)
         }
-    }
+    )
 }
 
 @Composable
 fun HabitListSection(
     habits: List<Habit>,
-    onCompleteClick: (Int) -> Unit
+    onCompleteClick: (Int) -> Unit,
+    onDeleteClick: (Int) -> Unit
 ) {
+    // lazy column so it only loads what's on screen
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(habits) { habit ->
+        items(habits, key = { it.id }) { habit ->
             HabitItemRow(
                 habit = habit,
-                onButtonClick = { onCompleteClick(habit.id) }
+                onButtonClick = { onCompleteClick(habit.id) },
+                onDeleteClick = { onDeleteClick(habit.id) }
             )
         }
     }
@@ -154,7 +162,8 @@ fun HabitListSection(
 @Composable
 fun HabitItemRow(
     habit: Habit,
-    onButtonClick: () -> Unit
+    onButtonClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -167,24 +176,22 @@ fun HabitItemRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // strike through and grey it out when done
             Text(
                 text = habit.name,
                 fontSize = 18.sp,
-                textDecoration = if (habit.isCompleted) {
-                    TextDecoration.LineThrough
-                } else {
-                    TextDecoration.None
-                },
-                color = if (habit.isCompleted) Color.Gray else Color.Black
+                textDecoration = if (habit.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
+                color = if (habit.isCompleted) Color.Gray else Color.Black,
+                modifier = Modifier.weight(1f)
             )
 
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // complete button changes color when done
             Button(
                 onClick = onButtonClick,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (habit.isCompleted)
-                        Color(0xFF4CAF50)
-                    else
-                        Color(0xFF2196F3)
+                    containerColor = if (habit.isCompleted) Color(0xFF4CAF50) else Color(0xFF2196F3)
                 )
             ) {
                 Text(
@@ -192,10 +199,19 @@ fun HabitItemRow(
                     color = Color.White
                 )
             }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // delete button removes habit from list
+            Button(
+                onClick = onDeleteClick,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+            ) {
+                Text(text = "Delete", color = Color.White)
+            }
         }
     }
 }
-
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
