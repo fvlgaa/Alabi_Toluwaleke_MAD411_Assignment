@@ -1,6 +1,7 @@
 package com.example.alabi_toluwaleke_mad411_assignmentss
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -25,7 +26,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            Alabi_Toluwaleke_MAD411_AssignmentssTheme{
+            Alabi_Toluwaleke_MAD411_AssignmentssTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -35,7 +36,33 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        Log.d("HabitTracker", "onStart called")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.d("HabitTracker", "onResume called")
+    }
+
+    override fun onPause() {
+        super.onPause()
+        Log.d("HabitTracker", "onPause called")
+    }
+
+    override fun onStop() {
+        super.onStop()
+        Log.d("HabitTracker", "onStop called")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d("HabitTracker", "onDestroy called")
+    }
 }
+
 
 // data class for habits
 data class Habit(
