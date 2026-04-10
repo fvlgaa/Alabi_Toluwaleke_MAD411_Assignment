@@ -27,7 +27,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,8 +68,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-
-// data class for habits
+// simple data class for habits
 data class Habit(
     val id: Int,
     val name: String,
@@ -78,23 +76,19 @@ data class Habit(
 )
 
 @Composable
-
-
 fun HabitTrackerApp(viewModel: HabitViewModel = viewModel()) {
 
-    // nav controller handles moving between screens
     val navController = rememberNavController()
 
     NavHost(
         navController = navController,
         startDestination = "habitList"
     ) {
-        // main screen route
         composable("habitList") {
             HabitListScreen(viewModel = viewModel, navController = navController)
         }
 
-        // detail screen route - habit name gets passed through the route
+        // pass habit name + status into detail screen
         composable("habitDetail/{habitName}/{isCompleted}") { backStackEntry ->
             val habitName = backStackEntry.arguments?.getString("habitName") ?: ""
             val isCompleted = backStackEntry.arguments?.getString("isCompleted") ?: "false"
@@ -112,8 +106,6 @@ fun HabitInputSection(
     text: String,
     onTextChange: (String) -> Unit
 ) {
-    // if its blank its an error simple as
-    // that
     val isError = text.isBlank()
 
     OutlinedTextField(
@@ -128,7 +120,6 @@ fun HabitInputSection(
         }
     )
     Spacer(modifier = Modifier.height(8.dp))
-
 }
 
 @Composable
@@ -138,7 +129,7 @@ fun HabitListSection(
     onDeleteClick: (Int) -> Unit,
     onViewDetails: (Habit) -> Unit
 ) {
-    // lazy column so it only loads what's on screen
+    // LazyColumn so it only loads visible items
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -181,7 +172,6 @@ fun HabitItemRow(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // view details button
             Button(
                 onClick = onViewDetails,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C27B0))
@@ -215,7 +205,6 @@ fun HabitItemRow(
     }
 }
 
-
 @Composable
 fun HabitDetailScreen(
     habitName: String,
@@ -229,32 +218,27 @@ fun HabitDetailScreen(
             .fillMaxSize()
             .padding(24.dp)
     ) {
-        // header
         Text(
             text = "Habit Details",
             fontSize = 28.sp,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        Divider(
-            thickness = 2.dp,
-            modifier = Modifier.padding(bottom = 20.dp)
-        )
+        Divider(thickness = 2.dp, modifier = Modifier.padding(bottom = 20.dp))
 
-        // habit info
         Text(text = "Habit: $habitName", fontSize = 20.sp)
 
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = if (isCompleted) "Status: Completed " else "Status: Not Completed ",
+            text = if (isCompleted) "Status: Completed" else "Status: Not Completed",
             fontSize = 18.sp,
             color = if (isCompleted) Color(0xFF4CAF50) else Color.Gray
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // open a webpage
+        // opens st clair website
         Button(
             onClick = {
                 val intent = android.content.Intent(
@@ -270,7 +254,6 @@ fun HabitDetailScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // back button
         Button(
             onClick = { navController.popBackStack() },
             colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
@@ -279,7 +262,6 @@ fun HabitDetailScreen(
         }
     }
 }
-
 
 @Composable
 fun HabitListScreen(viewModel: HabitViewModel, navController: androidx.navigation.NavController) {
@@ -313,17 +295,16 @@ fun HabitListScreen(viewModel: HabitViewModel, navController: androidx.navigatio
                 .padding(paddingValues)
                 .padding(24.dp)
         ) {
-            // header
             Text(
                 text = "Student Habit Tracker",
                 fontSize = 28.sp,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            Divider(
-                thickness = 2.dp,
-                modifier = Modifier.padding(bottom = 20.dp)
-            )
+            Divider(thickness = 2.dp, modifier = Modifier.padding(bottom = 20.dp))
+
+            // quote section from API
+            QuoteSection(viewModel = viewModel)
 
             HabitInputSection(
                 text = inputText,
@@ -332,7 +313,6 @@ fun HabitListScreen(viewModel: HabitViewModel, navController: androidx.navigatio
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // list section
             if (habitList.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxWidth(),
@@ -345,13 +325,15 @@ fun HabitListScreen(viewModel: HabitViewModel, navController: androidx.navigatio
                     habits = habitList,
                     onCompleteClick = { viewModel.toggleComplete(it) },
                     onDeleteClick = { viewModel.deleteHabit(it) },
-                    onViewDetails = { habit -> navController.navigate("habitDetail/${habit.name}/${habit.isCompleted}")
+                    onViewDetails = { habit ->
+                        navController.navigate("habitDetail/${habit.name}/${habit.isCompleted}")
                     }
                 )
             }
         }
     }
 }
+
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
