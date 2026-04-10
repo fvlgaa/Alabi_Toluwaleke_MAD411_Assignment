@@ -265,6 +265,7 @@ fun HabitDetailScreen(
 
 @Composable
 fun HabitListScreen(viewModel: HabitViewModel, navController: androidx.navigation.NavController) {
+    val name by viewModel.displayName.collectAsStateWithLifecycle()
     val habitList by viewModel.habits.collectAsStateWithLifecycle()
     var inputText by rememberSaveable { mutableStateOf("") }
 
@@ -300,8 +301,26 @@ fun HabitListScreen(viewModel: HabitViewModel, navController: androidx.navigatio
                 fontSize = 28.sp,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
+            Divider(thickness = 2.dp, modifier = Modifier.padding(bottom = 20.dp))
+
+            OutlinedTextField(
+                value = name,
+                onValueChange = { viewModel.saveName(it) },
+                label = { Text("Your Name") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
 
             Divider(thickness = 2.dp, modifier = Modifier.padding(bottom = 20.dp))
+            if (name.isNotEmpty()) {
+                Text(
+                    text = "Welcome back, $name!",
+                    fontSize = 18.sp,
+                    color = Color(0xFF4CAF50),
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+            }
+
 
             // quote section from API
             QuoteSection(viewModel = viewModel)
